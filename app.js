@@ -66,19 +66,23 @@ app.post('/signin', async (req, res) => {
   const conn = await pool.getConnection();
   try {
     // Retrieve user from the database
-    const user[0].length = 0; 
-    [user] = await conn.query('SELECT * FROM users WHERE username = ?', [username]);
-    if (user[0].length === 0) {
+    const users = await conn.query('SELECT * FROM users WHERE username = ?', [username]);
+
+    // Check if a user with the given username exists
+    if (users.length === 0) {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
     // Compare the provided password with the hashed password in the database
-    const passwordMatch = await bcrypt.compare(password, user[0].password);
+    const user = users[0]; // Assuming you're only expecting one user with the given username
+    const passwordMatch = await bcrypt.compare(password, user.password);
+
     if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
-    res.status(200).json({ message: 'Sign-in successful' });
+    // You can customize the response based on your requirements
+    res.status(200).json({ message: 'Sign-in successful', user: { username: user.username, email: user.email } });
   } catch (error) {
     console.error('Error during signin:', error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -86,6 +90,7 @@ app.post('/signin', async (req, res) => {
     conn.release();
   }
 });
+
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
