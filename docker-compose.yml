@@ -15,7 +15,7 @@ services:
       DB_PORT: 3306
       DB_USER: m4ntr4
       DB_PASSWORD: S3ZTANTRAFPY1H7JJ
-      DB_NAME: your_db_name
+      DB_NAME: mvp_db
 
   db:
     image: mariadb
