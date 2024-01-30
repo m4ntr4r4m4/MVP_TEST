@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home Page</title>
+</head>
+<body>
+  <h1>Welcome to the Home Page</h1>
+
+  <h2>Sign In</h2>
+  <form action="/signin" method="post">
+    <label for="signinUsername">Username:</label>
+    <input type="text" id="signinUsername" name="username" required>
+    <br>
+    <label for="signinPassword">Password:</label>
+    <input type="password" id="signinPassword" name="password" required>
+    <br>
+    <button type="submit">Sign In</button>
+  </form>
+
+  <h2>Sign Up</h2>
+  <form action="/signup" method="post">
+    <label for="signupUsername">Username:</label>
+    <input type="text" id="signupUsername" name="username" required>
+    <br>
+    <label for="signupPassword">Password:</label>
+    <input type="password" id="signupPassword" name="password" required>
+    <br>
+    <label for="signupEmail">Email:</label>
+    <input type="text" id="signupEmail" name="email" required>
+    <br>
+
+    <button type="submit">Sign Up</button>
+  </form>
+</body>
+</html>
+

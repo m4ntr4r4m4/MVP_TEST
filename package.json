@@ -7,8 +7,12 @@
     "start": "node app.js"
   },
   "dependencies": {
-    "express": "^4.17.1",
-    "mariadb": "^2.5.3"
+    "express": "latest",
+    "mariadb": "latest",
+    "bcrypt": "latest",
+    "body-parser": "latest",
+    "ejs": "latest"
+
   }
 }
 
