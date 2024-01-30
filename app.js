@@ -2,6 +2,7 @@ const express = require('express');
 const mariadb = require('mariadb');
 const bcrypt = require('bcrypt');
 const bodyParser = require('body-parser');
+const session = require('express-session');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,6 +13,12 @@ app.set('view engine', 'ejs');
 // Middleware to parse incoming request bodies
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+app.use(session({
+  secret: 'u5289LVn4C3oBwGaccix2E57',
+  resave: false,
+  saveUninitialized: true,
+}));
+
 
 const pool = mariadb.createPool({
   host: process.env.DB_HOST || 'localhost',
@@ -80,6 +87,12 @@ app.post('/signin', async (req, res) => {
     if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
+    req.session.user = {
+	    id: user.id,
+      	    username: user.username,
+	    email: user.email,
+      // Add other user information as needed
+    };
 
     // You can customize the response based on your requirements
   //  res.status(200).json({ message: 'Sign-in successful', user: { username: user.username, email: user.email } });
@@ -90,6 +103,15 @@ app.post('/signin', async (req, res) => {
   } finally {
     conn.release();
   }
+});
+
+app.get('/profile', (req, res) => {
+  // Check if the user is authenticated
+	if (!req.session.user) {
+    return res.status(401).json({ error: 'Unauthorized access' });
+  }
+  // Render the profile page with user information
+  res.render('profile', { user: req.user });
 });
 
 
