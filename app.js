@@ -82,7 +82,8 @@ app.post('/signin', async (req, res) => {
     }
 
     // You can customize the response based on your requirements
-    res.status(200).json({ message: 'Sign-in successful', user: { username: user.username, email: user.email } });
+  //  res.status(200).json({ message: 'Sign-in successful', user: { username: user.username, email: user.email } });
+    res.redirect('/profile');
   } catch (error) {
     console.error('Error during signin:', error);
     res.status(500).json({ error: 'Internal Server Error' });
