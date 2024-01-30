@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: m4ntr4
+      DB_PASSWORD: S3ZTANTRAFPY1H7JJ
+      DB_NAME: your_db_name
+
+  db:
+    image: mariadb
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: db-TANTRA123asan
+      MYSQL_DATABASE: mvp_db
+      MYSQL_USER: m4ntr4
+      MYSQL_PASSWORD: S3ZTANTRAFPY1H7JJ
+    ports:
+      - "3306:3306"
+
