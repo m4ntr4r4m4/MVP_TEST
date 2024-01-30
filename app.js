@@ -111,7 +111,8 @@ app.get('/profile', (req, res) => {
     return res.status(401).json({ error: 'Unauthorized access' });
   }
   // Render the profile page with user information
-  res.render('profile', { user: req.user });
+	res.render('profile', { user: req.session.user });
+
 });
 
 
