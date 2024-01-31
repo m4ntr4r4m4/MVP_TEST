@@ -1,8 +1,10 @@
 const express = require('express');
+const session = require('express-session');
 const mariadb = require('mariadb');
 const bcrypt = require('bcrypt');
 const bodyParser = require('body-parser');
-const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
+const retry = require('retry');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,15 +12,28 @@ const PORT = process.env.PORT || 3000;
 // Set the view engine to EJS
 app.set('view engine', 'ejs');
 
+const sessionStore = new MySQLStore({
+  host: process.env.DB_HOST ,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER ,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  table: 'user_sessions',
+  clearExpired: true,
+  checkExpirationInterval: 900000, // Check every 15 minutes
+  expiration: 86400000, // Session expiration in 1 day
+});
+
 // Middleware to parse incoming request bodies
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+
 app.use(session({
-  secret: 'u5289LVn4C3oBwGaccix2E57',
+  store: sessionStore,
+  secret: 'u5289LVn4C3oBwGaccix2E572bcPF8H2It5X00aktFRCl27bxGlM28U34E4eL2sz3Eu8o',
   resave: false,
   saveUninitialized: true,
 }));
-
 
 const pool = mariadb.createPool({
   host: process.env.DB_HOST || 'localhost',
@@ -31,9 +46,8 @@ const pool = mariadb.createPool({
 app.get('/', (req, res) => {
   res.render('/usr/src/app/views/index.ejs');
 });
-
 // Sign-up route
-app.post('/signup', async (req, res) => {
+app.post('/api/signup', async (req, res) => {
   const { username, password, email } = req.body;
 
   // Hash the password
@@ -57,7 +71,8 @@ app.post('/signup', async (req, res) => {
     // Insert the new user into the database
     await conn.query('INSERT INTO users (username, password, email) VALUES (?, ?, ?)', [username, hashedPassword, email]);
 
-    res.status(201).json({ message: 'User created successfully' });
+    
+    res.redirect('/');  
   } catch (error) {
     console.error('Error during signup:', error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -67,7 +82,7 @@ app.post('/signup', async (req, res) => {
 });
 
 // Sign-in route
-app.post('/signin', async (req, res) => {
+app.post('/api/signin', async (req, res) => {
   const { username, password } = req.body;
 
   const conn = await pool.getConnection();
@@ -81,7 +96,7 @@ app.post('/signin', async (req, res) => {
     }
 
     // Compare the provided password with the hashed password in the database
-    const user = users[0]; // Assuming you're only expecting one user with the given username
+    const user = users[0];
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
@@ -91,11 +106,8 @@ app.post('/signin', async (req, res) => {
 	    id: user.id,
       	    username: user.username,
 	    email: user.email,
-      // Add other user information as needed
     };
 
-    // You can customize the response based on your requirements
-  //  res.status(200).json({ message: 'Sign-in successful', user: { username: user.username, email: user.email } });
     res.redirect('/profile');
   } catch (error) {
     console.error('Error during signin:', error);
@@ -105,18 +117,152 @@ app.post('/signin', async (req, res) => {
   }
 });
 
-app.get('/profile', (req, res) => {
+app.get('/profile', async (req, res) => {
   // Check if the user is authenticated
-	if (!req.session.user) {
+  if (!req.session.user) {
     return res.status(401).json({ error: 'Unauthorized access' });
   }
-  // Render the profile page with user information
-	res.render('profile', { user: req.session.user });
 
+  const conn = await pool.getConnection();
+  try {
+    // Fetch total karma points
+    const totalPoints = await getUserTotalPoints(req.session.user.id);
+
+    // Return user profile information including total points
+    //   res.status(200).json({ user, totalPoints });
+
+    // Render the profile page with user information and total points
+    res.render('profile', { user: { ...req.session.user, totalPoints } });
+
+   //s res.render('profile', { user, totalPoints });
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  } finally {
+    conn.release();
+  }
+});
+
+app.post('/api/reward/like', async (req, res) => {
+  const userId = req.session.user.id;
+  const actionType = 'like';
+  const points = 1;
+
+  await rewardUser(userId, actionType, points);
+  res.redirect('/profile');
+});
+
+// Import your database functions (e.g., rewardUser, getUserTotalPoints, etc.)
+
+// Assume `pool` is your database connection pool
+
+async function rewardUser(userId, actionType, points) {
+  const conn = await pool.getConnection();
+
+  try {
+    // Create a new record for the rewarded action in UserInteractions
+    await conn.query('INSERT INTO UserInteractions (user_id, action_type) VALUES (?, ?)', [userId, actionType]);
+
+    // Update the total_points in KarmaPoints
+    await conn.query('INSERT INTO KarmaPoints (user_id, total_points) VALUES (?, ?) ON DUPLICATE KEY UPDATE total_points = total_points + VALUES(total_points)', [userId, points]);
+  } finally {
+    conn.release(); // Release the connection back to the pool
+  }
+}
+
+// Example: Function to get a user's total points
+async function getUserTotalPoints(userId) {
+  const conn = await pool.getConnection();
+
+  try {
+    const result = await conn.query('SELECT total_points FROM KarmaPoints WHERE user_id = ?', [userId]);
+    return result[0] ? result[0].total_points : 0;
+  } finally {
+    conn.release(); // Release the connection back to the pool
+  }
+}
+
+// Example: Function to update points for a specific action type
+async function updatePointsForAction(userId, newPoints) {
+  const conn = await pool.getConnection();
+
+  try {
+    await conn.query('UPDATE KarmaPoints SET total_points = ? WHERE user_id = ?', [newPoints, userId]);
+  } finally {
+    conn.release(); // Release the connection back to the pool
+  }
+}
+
+// Example: Function to undo a rewarded action
+async function undoRewardedAction(userId, actionType) {
+  const conn = await pool.getConnection();
+
+  try {
+    // Delete the record from UserInteractions
+    await conn.query('DELETE FROM UserInteractions WHERE user_id = ? AND action_type = ?', [userId, actionType]);
+
+    // Update the total_points in KarmaPoints
+    const newPoints = await getUserTotalPoints(userId);
+    await conn.query('UPDATE KarmaPoints SET total_points = ? WHERE user_id = ?', [newPoints, userId]);
+  } finally {
+    conn.release(); // Release the connection back to the pool
+  }
+}
+
+// API endpoint to reward users with points for posting
+app.post('/api/reward/post', async (req, res) => {
+  const userId = req.session.user.id;
+  const actionType = 'post';
+  const points = 2;
+
+  await rewardUser(userId, actionType, points);
+  res.redirect('/profile');
+});
+
+// Logout route
+app.get('/logout', (req, res) => {
+  // Destroy the user's session
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error during logout:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+
+    // Redirect the user to the homepage or any other desired page
+    res.redirect('/');
+  });
 });
 
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// Function to check if the database is ready
+async function isDatabaseReady() {
+  try {
+    const conn = await pool.getConnection();
+    conn.release();
+    return true;
+  } catch (error) {
+    console.log('Database not ready. Retrying...');
+    return false;
+  }
+}
 
+// Retry options
+const retryOptions = {
+  retries: 10,
+  factor: 2,
+  minTimeout: 1000,
+  maxTimeout: 10000,
+};
+
+// Use retry to wait for the database to be ready
+const operation = retry.operation(retryOptions);
+operation.attempt(async function() {
+  if (await isDatabaseReady()) {
+    // Start your application
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  } else {
+    operation.retry(new Error('Database not ready'));
+  }
+});

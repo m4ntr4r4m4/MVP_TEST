@@ -3,12 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Profile Page</title>
+  <title>User Profile</title>
 </head>
 <body>
-  <h1>Welcome to Your Profile Page</h1>
-  <p>Username: <%= user.username %></p>
+  <h1>Welcome, <%= user.username %>!</h1>
   <p>Email: <%= user.email %></p>
+  <p>Total Points: <%= user.totalPoints %></p>
+
+  <!-- Buttons to reward user with points -->
+  <form action="/api/reward/like" method="post">
+    <input type="hidden" name="userId" value="<%= user.id %>">
+    <input type="hidden" name="actionType" value="like">
+    <button type="submit">Reward with 1 point for liking</button>
+  </form>
+
+  <form action="/api/reward/post" method="post">
+    <input type="hidden" name="userId" value="<%= user.id %>">
+    <input type="hidden" name="actionType" value="post">
+    <button type="submit">Reward with 2 points for posting</button>
+  </form>
+
+  <!-- Add other content or buttons as needed -->
+
+  <a href="/logout">Logout</a>
 </body>
 </html>
-
