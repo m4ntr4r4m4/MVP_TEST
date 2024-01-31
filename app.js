@@ -72,7 +72,7 @@ app.post('/api/signup', async (req, res) => {
     await conn.query('INSERT INTO users (username, password, email) VALUES (?, ?, ?)', [username, hashedPassword, email]);
 
     
-    res.redirect('/');  
+    res.status(201).json({ success: true, message: 'User created successfully' });
   } catch (error) {
     console.error('Error during signup:', error);
     res.status(500).json({ error: 'Internal Server Error' });
