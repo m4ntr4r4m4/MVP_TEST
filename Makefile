@@ -2,7 +2,6 @@
 DOCKER_COMPOSE = docker-compose
 IMAGE_NAME = mydockerimage
 CONTAINER_NAME = MY_MVP_CONTAINER
-PORT = 8080
 
 # Build Docker image
 build:

@@ -5,6 +5,8 @@ const bcrypt = require('bcrypt');
 const bodyParser = require('body-parser');
 const MySQLStore = require('express-mysql-session')(session);
 const retry = require('retry');
+const logger = require('./logger');
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -58,23 +60,24 @@ app.post('/api/signup', async (req, res) => {
     // Check if the username is already taken
     const existingUser = await conn.query('SELECT * FROM users WHERE username = ?', [username]);
     if (existingUser.length > 0) {
+      logger.warn(`[${new Date().toISOString()}] Signup failed - Username '${username}' is already taken`);
       return res.status(400).json({ error: 'Username is already taken' });
     }
 
     // Check if the username is already taken
     const existingEmail = await conn.query('SELECT * FROM users WHERE email = ?', [email]);
     if (existingEmail.length > 0) {
+      logger.warn(`[${new Date().toISOString()}] Signup failed - Email '${email}' is already used`);
       return res.status(400).json({ error: 'Email is already used' });
     }
-
 
     // Insert the new user into the database
     await conn.query('INSERT INTO users (username, password, email) VALUES (?, ?, ?)', [username, hashedPassword, email]);
 
-    
+    logger.info(`[${new Date().toISOString()}] User signed up: ${username}`);
     res.status(201).json({ success: true, message: 'User created successfully' });
   } catch (error) {
-    console.error('Error during signup:', error);
+    logger.error(`[${new Date().toISOString()}] Error during signup:`, error);
     res.status(500).json({ error: 'Internal Server Error' });
   } finally {
     conn.release();
@@ -92,6 +95,7 @@ app.post('/api/signin', async (req, res) => {
 
     // Check if a user with the given username exists
     if (users.length === 0) {
+      logger.warn(`[${new Date().toISOString()}] Signin failed - Invalid username: ${username}`);
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
@@ -100,17 +104,20 @@ app.post('/api/signin', async (req, res) => {
     const passwordMatch = await bcrypt.compare(password, user.password);
 
     if (!passwordMatch) {
+      logger.warn(`[${new Date().toISOString()}] Signin failed - Invalid password for username: ${username}`);
       return res.status(401).json({ error: 'Invalid username or password' });
     }
+
     req.session.user = {
-	    id: user.id,
-      	    username: user.username,
-	    email: user.email,
+      id: user.id,
+      username: user.username,
+      email: user.email,
     };
 
+    logger.info(`[${new Date().toISOString()}] User signed in: ${username}`);
     res.redirect('/profile');
   } catch (error) {
-    console.error('Error during signin:', error);
+    logger.error(`[${new Date().toISOString()}] Error during signin:`, error);
     res.status(500).json({ error: 'Internal Server Error' });
   } finally {
     conn.release();
@@ -163,8 +170,12 @@ async function rewardUser(userId, actionType, points) {
     // Create a new record for the rewarded action in UserInteractions
     await conn.query('INSERT INTO UserInteractions (user_id, action_type) VALUES (?, ?)', [userId, actionType]);
 
+    logger.info(`[${new Date().toISOString()}] User rewarded with points - UserID: ${userId}, ActionType: ${actionType}, Points: ${points}`);
+
     // Update the total_points in KarmaPoints
     await conn.query('INSERT INTO KarmaPoints (user_id, total_points) VALUES (?, ?) ON DUPLICATE KEY UPDATE total_points = total_points + VALUES(total_points)', [userId, points]);
+  } catch (error) {
+    logger.error(`[${new Date().toISOString()}] Error during rewardUser:`, error);
   } finally {
     conn.release(); // Release the connection back to the pool
   }
@@ -260,7 +271,7 @@ operation.attempt(async function() {
   if (await isDatabaseReady()) {
     // Start your application
     app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+      logger.info(`[${new Date().toISOString()}] Server is running on port ${PORT}`);
     });
   } else {
     operation.retry(new Error('Database not ready'));
