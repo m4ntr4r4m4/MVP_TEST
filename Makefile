@@ -6,12 +6,12 @@ CONTAINER_NAME = MY_MVP_CONTAINER
 # Build Docker image
 build:
 	$(DOCKER_COMPOSE) build
-	$(DOCKER_COMPOSE) up
+	$(DOCKER_COMPOSE) up -d
 	
 
 # Run Docker container using Docker Compose
 up:  
-	$(DOCKER_COMPOSE) up
+	$(DOCKER_COMPOSE) up -d
 
 # Stop Docker container using Docker Compose
 down:

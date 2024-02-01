@@ -7,7 +7,6 @@ const MySQLStore = require('express-mysql-session')(session);
 const retry = require('retry');
 const logger = require('./logger');
 
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -20,7 +19,6 @@ const sessionStore = new MySQLStore({
   user: process.env.DB_USER ,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  table: 'user_sessions',
   clearExpired: true,
   checkExpirationInterval: 900000, // Check every 15 minutes
   expiration: 86400000, // Session expiration in 1 day
@@ -45,7 +43,14 @@ const pool = mariadb.createPool({
   connectionLimit: 5
 });
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
+  // Check if there is a user session
+  if (req.session.user) {
+    // If a session exists, redirect to the profile page
+    return res.redirect('/profile');
+  }
+
+  // If no session exists, render the home page
   res.render('/usr/src/app/views/index.ejs');
 });
 // Sign-up route
