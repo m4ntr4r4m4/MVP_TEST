@@ -32,6 +32,8 @@ services:
       - node_app_data:/usr/src/app/data
     depends_on:
       - db
+    restart: always
+
 
 volumes:
   mariadb_data:
