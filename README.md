@@ -32,9 +32,11 @@
     Profile Management:
         GET /profile: Retrieve user profile information.
 
-Reward System:
-    POST /api/reward/like: Reward a user with karma points for liking.
-    POST /api/reward/post: Reward a user with karma points for posting.    
+## Reward System:
+    POST /api/reward/like:
+                Reward a user with karma points for liking.
+    POST /api/reward/post:
+                Reward a user with karma points for posting.    
 
 ## Operations
     Application Initialization:
